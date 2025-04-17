@@ -417,6 +417,7 @@
         <div class="tab-container">
             <div class="tab-buttons">
                 <button class="tab-btn active" data-tab="registros">Registros</button>
+                <button class="tab-btn" data-tab="leads">Leads</button>
                 <button class="tab-btn" data-tab="configuracoes">Configurações do Formulário</button>
             </div>
             
@@ -447,6 +448,49 @@
                     <button id="prevPage" class="action-btn" disabled>Anterior</button>
                     <span id="pageInfo">Página 1 de 1</span>
                     <button id="nextPage" class="action-btn" disabled>Próxima</button>
+                </div>
+            </div>
+            
+            <div id="leads" class="tab-content">
+                <h2>Gerenciamento de Leads</h2>
+                
+                <div class="search-filter">
+                    <input type="text" id="searchLeads" placeholder="Buscar por nome, CPF ou telefone...">
+                    <button class="action-btn" id="searchLeadsBtn">Buscar</button>
+                </div>
+                
+                <div class="form-group">
+                    <label for="leadStatus">Filtrar por Status:</label>
+                    <select id="leadStatus" style="max-width: 250px; margin-bottom: 20px;">
+                        <option value="all">Todos</option>
+                        <option value="novo">Novos</option>
+                        <option value="contato">Em Contato</option>
+                        <option value="aguardando">Aguardando Resposta</option>
+                        <option value="convertido">Convertidos</option>
+                        <option value="perdido">Perdidos</option>
+                    </select>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Telefone</th>
+                            <th>Data</th>
+                            <th>Status</th>
+                            <th>Última Atualização</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leadsTable">
+                        <!-- Os leads serão carregados aqui pelo JavaScript -->
+                    </tbody>
+                </table>
+                
+                <div class="pagination">
+                    <button id="prevLeadPage" class="action-btn" disabled>Anterior</button>
+                    <span id="leadPageInfo">Página 1 de 1</span>
+                    <button id="nextLeadPage" class="action-btn" disabled>Próxima</button>
                 </div>
             </div>
             
@@ -618,10 +662,36 @@
             }
         }
         
+        // Carregar leads salvos
+        let leadsData = [];
+        const savedLeads = localStorage.getItem('formLeads');
+        if (savedLeads) {
+            try {
+                leadsData = JSON.parse(savedLeads);
+            } catch (e) {
+                console.error('Erro ao carregar leads salvos:', e);
+            }
+        } else {
+            // Inicializar com os mesmos dados dos registros, mas adicionando status como "novo"
+            leadsData = formSubmissions.map(submission => ({
+                ...submission,
+                status: 'novo',
+                ultimaAtualizacao: submission.dataSubmissao,
+                notas: []
+            }));
+            
+            // Salvar leads iniciais
+            localStorage.setItem('formLeads', JSON.stringify(leadsData));
+        }
+        
         // Paginação
         let currentPage = 1;
         const itemsPerPage = 10;
         let filteredSubmissions = [...formSubmissions];
+        
+        // Variáveis de paginação para leads
+        let currentLeadPage = 1;
+        let filteredLeads = [...leadsData];
         
         // Função para formatar data
         function formatDate(dateString) {
@@ -1022,6 +1092,337 @@
             alert('Funcionalidade de exportação para PDF será implementada em uma versão futura.');
         }
         
+        // Buscar leads
+        function searchLeads(query) {
+            query = query.toLowerCase();
+            filteredLeads = leadsData.filter(lead => 
+                (lead.nome && lead.nome.toLowerCase().includes(query)) ||
+                (lead.cpf && lead.cpf.includes(query)) ||
+                (lead.telefone && lead.telefone.includes(query))
+            );
+            
+            currentLeadPage = 1;
+            loadLeads(currentLeadPage);
+        }
+        
+        // Filtrar leads por status
+        function filterLeadsByStatus(status) {
+            if (status === 'all') {
+                filteredLeads = [...leadsData];
+            } else {
+                filteredLeads = leadsData.filter(lead => lead.status === status);
+            }
+            
+            currentLeadPage = 1;
+            loadLeads(currentLeadPage);
+        }
+        
+        // Carregar leads com paginação
+        function loadLeads(page) {
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageData = filteredLeads.slice(startIndex, endIndex);
+            
+            const tableBody = document.getElementById('leadsTable');
+            tableBody.innerHTML = '';
+            
+            if (pageData.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhum lead encontrado</td></tr>';
+                return;
+            }
+            
+            // Mapeamento de status para cores
+            const statusColors = {
+                'novo': '#28a745',
+                'contato': '#0d6efd',
+                'aguardando': '#ffc107',
+                'convertido': '#20c997',
+                'perdido': '#dc3545'
+            };
+            
+            // Mapeamento de status para textos
+            const statusLabels = {
+                'novo': 'Novo',
+                'contato': 'Em Contato',
+                'aguardando': 'Aguardando',
+                'convertido': 'Convertido',
+                'perdido': 'Perdido'
+            };
+            
+            pageData.forEach(lead => {
+                const row = document.createElement('tr');
+                
+                // Formatação de datas
+                const submissionDate = formatDate(lead.dataSubmissao);
+                const updateDate = formatDate(lead.ultimaAtualizacao);
+                
+                // Status com cor
+                const statusColor = statusColors[lead.status] || '#6c757d';
+                const statusLabel = statusLabels[lead.status] || 'Indefinido';
+                
+                row.innerHTML = `
+                    <td>${lead.nome || '-'}</td>
+                    <td>${lead.telefone || '-'}</td>
+                    <td>${submissionDate}</td>
+                    <td><span style="display: inline-block; padding: 5px 10px; border-radius: 4px; background-color: ${statusColor}; color: white;">${statusLabel}</span></td>
+                    <td>${updateDate}</td>
+                    <td>
+                        <button class="action-btn view-lead-btn" data-id="${lead.id}">Ver</button>
+                        <button class="action-btn edit-status-btn" data-id="${lead.id}">Atualizar</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+            
+            // Adicionar eventos para os botões de visualizar e atualizar status
+            document.querySelectorAll('.view-lead-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    showLeadDetails(parseInt(this.dataset.id));
+                });
+            });
+            
+            document.querySelectorAll('.edit-status-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    showStatusModal(parseInt(this.dataset.id));
+                });
+            });
+            
+            // Atualizar controles de paginação
+            updateLeadPaginationControls();
+        }
+        
+        function updateLeadPaginationControls() {
+            const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+            document.getElementById('leadPageInfo').textContent = `Página ${currentLeadPage} de ${totalPages || 1}`;
+            
+            document.getElementById('prevLeadPage').disabled = currentLeadPage <= 1;
+            document.getElementById('nextLeadPage').disabled = currentLeadPage >= totalPages;
+        }
+        
+        // Exibir detalhes do lead
+        function showLeadDetails(id) {
+            const lead = leadsData.find(l => l.id === id);
+            if (!lead) return;
+            
+            const detailsDiv = document.getElementById('registroDetails');
+            detailsDiv.innerHTML = '';
+            
+            // Status do lead
+            const statusLabels = {
+                'novo': 'Novo',
+                'contato': 'Em Contato',
+                'aguardando': 'Aguardando Resposta',
+                'convertido': 'Convertido',
+                'perdido': 'Perdido'
+            };
+            
+            let detailsHTML = `
+                <div class="detail-item" style="background-color: #f7f7f7; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <div class="detail-label">Status do Lead:</div>
+                    <div class="detail-value">${statusLabels[lead.status] || 'Indefinido'}</div>
+                </div>
+            `;
+            
+            // Dados pessoais
+            detailsHTML += '<h3>Dados Pessoais</h3>';
+            
+            formConfig.sections.pessoal.fields.forEach(field => {
+                let value = lead[field.id] || '-';
+                
+                // Formatação especial para tipos específicos
+                if (field.type === 'date' && value !== '-') {
+                    value = formatDate(value);
+                }
+                
+                detailsHTML += `
+                    <div class="detail-item">
+                        <div class="detail-label">${field.label}</div>
+                        <div class="detail-value">${value}</div>
+                    </div>
+                `;
+            });
+            
+            // Dados profissionais
+            detailsHTML += '<h3>Dados Profissionais</h3>';
+            
+            formConfig.sections.profissional.fields.forEach(field => {
+                let value = lead[field.id] || '-';
+                
+                // Formatação especial para valores monetários
+                if (field.id === 'renda' && value !== '-') {
+                    value = formatMoney(value);
+                }
+                
+                detailsHTML += `
+                    <div class="detail-item">
+                        <div class="detail-label">${field.label}</div>
+                        <div class="detail-value">${value}</div>
+                    </div>
+                `;
+            });
+            
+            // Histórico de notas
+            detailsHTML += '<h3>Histórico de Contatos</h3>';
+            
+            if (lead.notas && lead.notas.length > 0) {
+                lead.notas.forEach(nota => {
+                    detailsHTML += `
+                        <div class="detail-item" style="background-color: #f7f7f7; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+                            <div class="detail-label">${formatDate(nota.data)} - ${nota.status}</div>
+                            <div class="detail-value">${nota.texto}</div>
+                        </div>
+                    `;
+                });
+            } else {
+                detailsHTML += '<p style="font-style: italic; color: #777;">Nenhuma nota adicionada</p>';
+            }
+            
+            detailsDiv.innerHTML = detailsHTML;
+            
+            // Modificar título do modal
+            document.querySelector('#registroModal .modal-header h2').textContent = 'Detalhes do Lead';
+            
+            // Adicionar botão de atualização de status
+            const modalFooter = document.querySelector('#registroModal .modal-footer');
+            
+            // Remover botão adicional se já existir
+            const existingUpdateBtn = document.getElementById('updateStatusBtn');
+            if (existingUpdateBtn) {
+                existingUpdateBtn.remove();
+            }
+            
+            // Adicionar botão de atualização
+            const updateBtn = document.createElement('button');
+            updateBtn.className = 'action-btn';
+            updateBtn.id = 'updateStatusBtn';
+            updateBtn.textContent = 'Atualizar Status';
+            updateBtn.dataset.id = id;
+            updateBtn.addEventListener('click', function() {
+                document.getElementById('registroModal').style.display = 'none';
+                showStatusModal(parseInt(this.dataset.id));
+            });
+            
+            modalFooter.insertBefore(updateBtn, modalFooter.firstChild);
+            
+            // Modificar botão de exclusão
+            document.getElementById('deleteRegistroBtn').dataset.id = id;
+            document.getElementById('deleteRegistroBtn').dataset.type = 'lead';
+            
+            // Exibir o modal
+            document.getElementById('registroModal').style.display = 'flex';
+        }
+        
+        // Modal para atualização de status
+        function showStatusModal(id) {
+            const lead = leadsData.find(l => l.id === id);
+            if (!lead) return;
+            
+            // Criar modal de status se não existir
+            if (!document.getElementById('statusModal')) {
+                const statusModal = document.createElement('div');
+                statusModal.id = 'statusModal';
+                statusModal.className = 'modal';
+                
+                statusModal.innerHTML = `
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header">
+                            <h2>Atualizar Status do Lead</h2>
+                            <button class="close-btn" id="closeStatusModal">&times;</button>
+                        </div>
+                        <div class="form-group">
+                            <label for="leadStatusSelect">Status:</label>
+                            <select id="leadStatusSelect">
+                                <option value="novo">Novo</option>
+                                <option value="contato">Em Contato</option>
+                                <option value="aguardando">Aguardando Resposta</option>
+                                <option value="convertido">Convertido</option>
+                                <option value="perdido">Perdido</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="leadNote">Nota/Observação:</label>
+                            <textarea id="leadNote" rows="4" placeholder="Adicione informações sobre o contato ou mudança de status..."></textarea>
+                        </div>
+                        <button class="save-btn" id="saveStatusBtn">Salvar Atualização</button>
+                    </div>
+                `;
+                
+                document.body.appendChild(statusModal);
+                
+                // Adicionar evento para fechar o modal
+                document.getElementById('closeStatusModal').addEventListener('click', function() {
+                    document.getElementById('statusModal').style.display = 'none';
+                });
+                
+                // Adicionar evento para salvar o status
+                document.getElementById('saveStatusBtn').addEventListener('click', function() {
+                    const leadId = parseInt(this.dataset.id);
+                    const newStatus = document.getElementById('leadStatusSelect').value;
+                    const note = document.getElementById('leadNote').value;
+                    
+                    updateLeadStatus(leadId, newStatus, note);
+                    document.getElementById('statusModal').style.display = 'none';
+                });
+            }
+            
+            // Configurar o modal com os dados atuais
+            document.getElementById('leadStatusSelect').value = lead.status;
+            document.getElementById('leadNote').value = '';
+            document.getElementById('saveStatusBtn').dataset.id = id;
+            
+            // Exibir o modal
+            document.getElementById('statusModal').style.display = 'flex';
+        }
+        
+        // Atualizar status do lead
+        function updateLeadStatus(id, newStatus, note) {
+            const leadIndex = leadsData.findIndex(l => l.id === id);
+            if (leadIndex === -1) return;
+            
+            const currentDate = new Date().toISOString();
+            
+            // Atualizar o lead
+            leadsData[leadIndex].status = newStatus;
+            leadsData[leadIndex].ultimaAtualizacao = currentDate;
+            
+            // Adicionar nota se fornecida
+            if (note.trim()) {
+                if (!leadsData[leadIndex].notas) {
+                    leadsData[leadIndex].notas = [];
+                }
+                
+                leadsData[leadIndex].notas.push({
+                    data: currentDate,
+                    status: newStatus,
+                    texto: note
+                });
+            }
+            
+            // Salvar alterações
+            localStorage.setItem('formLeads', JSON.stringify(leadsData));
+            
+            // Recarregar lista de leads
+            loadLeads(currentLeadPage);
+        }
+        
+        // Modificar a função deleteRegistro para lidar com leads também
+        function deleteRegistro(id, type = 'registro') {
+            if (type === 'lead') {
+                leadsData = leadsData.filter(l => l.id !== id);
+                filteredLeads = filteredLeads.filter(l => l.id !== id);
+                localStorage.setItem('formLeads', JSON.stringify(leadsData));
+                loadLeads(currentLeadPage);
+            } else {
+                formSubmissions = formSubmissions.filter(s => s.id !== id);
+                filteredSubmissions = filteredSubmissions.filter(s => s.id !== id);
+                localStorage.setItem('formSubmissions', JSON.stringify(formSubmissions));
+                loadRegistrations(currentPage);
+            }
+            
+            // Fechar o modal
+            document.getElementById('registroModal').style.display = 'none';
+        }
+        
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
             // Configurar campos de formulário com valores salvos
@@ -1143,6 +1544,43 @@
                         content.style.display = 'block';
                     }
                 });
+            });
+            
+            // Carregar leads
+            loadLeads(currentLeadPage);
+            
+            // Eventos para busca de leads
+            document.getElementById('searchLeadsBtn').addEventListener('click', function() {
+                const query = document.getElementById('searchLeads').value;
+                searchLeads(query);
+            });
+            
+            document.getElementById('searchLeads').addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') {
+                    const query = this.value;
+                    searchLeads(query);
+                }
+            });
+            
+            // Eventos para filtro de status de leads
+            document.getElementById('leadStatus').addEventListener('change', function() {
+                filterLeadsByStatus(this.value);
+            });
+            
+            // Eventos para paginação de leads
+            document.getElementById('prevLeadPage').addEventListener('click', function() {
+                if (currentLeadPage > 1) {
+                    currentLeadPage--;
+                    loadLeads(currentLeadPage);
+                }
+            });
+            
+            document.getElementById('nextLeadPage').addEventListener('click', function() {
+                const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+                if (currentLeadPage < totalPages) {
+                    currentLeadPage++;
+                    loadLeads(currentLeadPage);
+                }
             });
         });
     </script>

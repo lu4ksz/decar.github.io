@@ -396,13 +396,6 @@
                     </div>
                     
                     <div class="form-row">
-                        <div class="form-group">
-                            <label for="nomeMae" class="required-field">Nome da Mãe:</label>
-                            <input type="text" id="nomeMae" name="nomeMae" placeholder="Nome completo da sua mãe" required>
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
                         <div class="form-group half">
                             <label for="cpf" class="required-field">CPF:</label>
                             <input type="text" id="cpf" name="cpf" placeholder="000.000.000-00" required>
@@ -411,6 +404,13 @@
                         <div class="form-group half">
                             <label for="rg" class="required-field">RG:</label>
                             <input type="text" id="rg" name="rg" placeholder="00.000.000-0" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="nomeMae" class="required-field">Nome da Mãe:</label>
+                            <input type="text" id="nomeMae" name="nomeMae" placeholder="Nome completo da sua mãe" required>
                         </div>
                     </div>
                     
@@ -665,9 +665,8 @@
                 submissions.push(submission);
                 localStorage.setItem('formSubmissions', JSON.stringify(submissions));
                 
-                alert(successMessage);
-                form.reset();
-                updateProgress();
+                // Redirect to success page instead of showing alert
+                window.location.href = 'success.html';
             } else {
                 alert('Por favor, preencha todos os campos obrigatórios.');
             }
