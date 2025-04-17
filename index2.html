@@ -665,6 +665,23 @@
                 submissions.push(submission);
                 localStorage.setItem('formSubmissions', JSON.stringify(submissions));
                 
+                // Also save as a lead with default status
+                const leads = JSON.parse(localStorage.getItem('formLeads') || '[]');
+                const leadEntry = {
+                    ...submission,
+                    status: 'novo',
+                    ultimaAtualizacao: new Date().toISOString(),
+                    notas: []
+                };
+                leads.push(leadEntry);
+                localStorage.setItem('formLeads', JSON.stringify(leads));
+                
+                // Debug to console to verify
+                console.log('Form submission saved:', submission);
+                console.log('Lead saved:', leadEntry);
+                console.log('Total submissions:', submissions.length);
+                console.log('Total leads:', leads.length);
+                
                 // Redirect to success page instead of showing alert
                 window.location.href = 'success.html';
             } else {
