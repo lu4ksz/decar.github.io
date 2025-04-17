@@ -511,6 +511,9 @@
     <!-- Add config.js script reference -->
     <script src="config.js"></script>
     
+    <!-- Add sync.js script reference -->
+    <script src="sync.js"></script>
+    
     <script>
         // Check for form configuration in localStorage
         const storedConfig = localStorage.getItem('formConfig');
@@ -678,31 +681,20 @@
                         notas: []
                     };
                     
-                    // Try to save to server first
-                    let savedToServer = false;
+                    // Try to save to central file first
+                    let savedToCentralFile = false;
                     
                     try {
-                        // Check if server API is available
-                        const isServerAvailable = await API_CONFIG.isServerStorageAvailable();
-                        
-                        if (isServerAvailable) {
-                            // Save to server API
-                            await API_CONFIG.request(
-                                API_CONFIG.ENDPOINTS.SAVE_SUBMISSION,
-                                'POST',
-                                { submission, lead: leadEntry }
-                            );
-                            
-                            savedToServer = true;
-                            console.log('Data saved to server successfully');
-                        }
+                        // Save to central file
+                        savedToCentralFile = await DATA_SYNC.saveSubmission(submission, leadEntry);
+                        console.log('Data saved to central file:', savedToCentralFile ? 'success' : 'failed');
                     } catch (error) {
-                        console.warn('Failed to save to server:', error);
+                        console.warn('Failed to save to central file:', error);
                         // Continue to save locally as fallback
                     }
                     
-                    // If server save failed or API is not available, save to localStorage as fallback
-                    if (!savedToServer) {
+                    // If central file save failed, save to localStorage as fallback
+                    if (!savedToCentralFile) {
                         // Save submission to localStorage
                         const submissions = JSON.parse(localStorage.getItem('formSubmissions') || '[]');
                         submissions.push(submission);
