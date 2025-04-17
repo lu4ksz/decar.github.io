@@ -508,6 +508,9 @@
         <p>© 2023 Decar Veículos - Todos os direitos reservados</p>
     </footer>
     
+    <!-- Add config.js script reference -->
+    <script src="config.js"></script>
+    
     <script>
         // Check for form configuration in localStorage
         const storedConfig = localStorage.getItem('formConfig');
@@ -604,7 +607,7 @@
         });
         
         // Form submission handling
-        form.addEventListener('submit', function(event) {
+        form.addEventListener('submit', async function(event) {
             event.preventDefault();
             
             // Validate form
@@ -635,55 +638,98 @@
             }
             
             if (isValid) {
-                // Get success message from localStorage or use default
-                let successMessage = 'Cadastro enviado com sucesso! Entraremos em contato em breve.';
-                if (storedConfig) {
-                    try {
-                        const formConfig = JSON.parse(storedConfig);
-                        if (formConfig.successMessage) {
-                            successMessage = formConfig.successMessage;
-                        }
-                    } catch (e) {}
-                }
+                // Show loading indicator in submit button
+                const submitBtn = document.getElementById('submitBtn');
+                const originalBtnText = submitBtn.textContent;
+                submitBtn.textContent = 'Enviando...';
+                submitBtn.disabled = true;
                 
-                // Create form submission object
-                const formData = new FormData(form);
-                const submission = {
-                    id: Date.now(),
-                    dataSubmissao: new Date().toISOString().split('T')[0]
-                };
-                
-                // Convert FormData to object
-                for (let [key, value] of formData.entries()) {
-                    if (key !== 'cnhUpload') { // Skip file upload
-                        submission[key] = value;
+                try {
+                    // Get success message from localStorage or use default
+                    let successMessage = 'Cadastro enviado com sucesso! Entraremos em contato em breve.';
+                    if (storedConfig) {
+                        try {
+                            const formConfig = JSON.parse(storedConfig);
+                            if (formConfig.successMessage) {
+                                successMessage = formConfig.successMessage;
+                            }
+                        } catch (e) {}
                     }
+                    
+                    // Create form submission object
+                    const formData = new FormData(form);
+                    const submission = {
+                        id: Date.now(),
+                        dataSubmissao: new Date().toISOString().split('T')[0]
+                    };
+                    
+                    // Convert FormData to object
+                    for (let [key, value] of formData.entries()) {
+                        if (key !== 'cnhUpload') { // Skip file upload
+                            submission[key] = value;
+                        }
+                    }
+                    
+                    // Create lead entry with default status
+                    const leadEntry = {
+                        ...submission,
+                        status: 'novo',
+                        ultimaAtualizacao: new Date().toISOString(),
+                        notas: []
+                    };
+                    
+                    // Try to save to server first
+                    let savedToServer = false;
+                    
+                    try {
+                        // Check if server API is available
+                        const isServerAvailable = await API_CONFIG.isServerStorageAvailable();
+                        
+                        if (isServerAvailable) {
+                            // Save to server API
+                            await API_CONFIG.request(
+                                API_CONFIG.ENDPOINTS.SAVE_SUBMISSION,
+                                'POST',
+                                { submission, lead: leadEntry }
+                            );
+                            
+                            savedToServer = true;
+                            console.log('Data saved to server successfully');
+                        }
+                    } catch (error) {
+                        console.warn('Failed to save to server:', error);
+                        // Continue to save locally as fallback
+                    }
+                    
+                    // If server save failed or API is not available, save to localStorage as fallback
+                    if (!savedToServer) {
+                        // Save submission to localStorage
+                        const submissions = JSON.parse(localStorage.getItem('formSubmissions') || '[]');
+                        submissions.push(submission);
+                        localStorage.setItem('formSubmissions', JSON.stringify(submissions));
+                        
+                        // Also save as a lead with default status
+                        const leads = JSON.parse(localStorage.getItem('formLeads') || '[]');
+                        leads.push(leadEntry);
+                        localStorage.setItem('formLeads', JSON.stringify(leads));
+                        
+                        console.log('Data saved to localStorage as fallback');
+                    }
+                    
+                    // Debug to console to verify
+                    console.log('Form submission saved:', submission);
+                    console.log('Lead saved:', leadEntry);
+                    
+                    // Redirect to success page
+                    window.location.href = 'success.html';
+                } catch (error) {
+                    console.error('Error saving form data:', error);
+                    alert('Ocorreu um erro ao enviar o formulário. Por favor, tente novamente.');
+                    
+                    // Reset button
+                    submitBtn.textContent = originalBtnText;
+                    submitBtn.disabled = false;
                 }
-                
-                // Save submission to localStorage
-                const submissions = JSON.parse(localStorage.getItem('formSubmissions') || '[]');
-                submissions.push(submission);
-                localStorage.setItem('formSubmissions', JSON.stringify(submissions));
-                
-                // Also save as a lead with default status
-                const leads = JSON.parse(localStorage.getItem('formLeads') || '[]');
-                const leadEntry = {
-                    ...submission,
-                    status: 'novo',
-                    ultimaAtualizacao: new Date().toISOString(),
-                    notas: []
-                };
-                leads.push(leadEntry);
-                localStorage.setItem('formLeads', JSON.stringify(leads));
-                
-                // Debug to console to verify
-                console.log('Form submission saved:', submission);
-                console.log('Lead saved:', leadEntry);
-                console.log('Total submissions:', submissions.length);
-                console.log('Total leads:', leads.length);
-                
-                // Redirect to success page instead of showing alert
-                window.location.href = 'success.html';
             } else {
                 alert('Por favor, preencha todos os campos obrigatórios.');
             }

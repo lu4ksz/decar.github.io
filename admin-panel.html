@@ -406,8 +406,16 @@
             }
         }
     </style>
+    
+    <!-- Add config.js script reference -->
+    <script src="config.js"></script>
 </head>
 <body>
+    <div id="scriptErrorMessage" style="display: none; padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 5px; margin: 20px auto; max-width: 1200px;">
+        <h3 style="color: #721c24; margin-top: 0;">Erro ao carregar dados do servidor</h3>
+        <p>Não foi possível conectar ao servidor. Utilizando dados locais como alternativa.</p>
+    </div>
+    
     <div class="admin-container">
         <header>
             <h1>Painel Administrativo - Decar Veículos</h1>
@@ -601,110 +609,260 @@
     </div>
 
     <script>
-        // Verificação de segurança
-        if (!sessionStorage.getItem('adminAccess')) {
-            window.location.href = 'login.html';
+        // Check if admin access is allowed
+        function checkAdminAccess() {
+            if (!sessionStorage.getItem('adminAccess')) {
+                return false;
+            }
+            return true;
         }
         
-        // Dados padrão para configuração do formulário
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            sessionStorage.removeItem('adminAccess');
+            window.location.href = 'login.html';
+        });
+        
+        // Carregar configurações salvas
         let formConfig = {
             title: "Ficha Cadastral para Financiamento",
             submitButtonText: "Enviar Cadastro",
-            successMessage: "Cadastro enviado com sucesso! Entraremos em contato em breve.",
             sections: {
                 pessoal: {
                     title: "Dados Pessoais",
-                    icon: "👤",
                     fields: [
-                        { id: "telefone", label: "Telefone (importante que seja da mesma pessoa da ficha):", type: "tel", required: true, placeholder: "(00) 00000-0000" },
-                        { id: "nome", label: "Nome Completo:", type: "text", required: true, placeholder: "Digite seu nome completo" },
-                        { id: "dataNascimento", label: "Data de Nascimento:", type: "date", required: true, placeholder: "" },
-                        { id: "nomeMae", label: "Nome da Mãe:", type: "text", required: true, placeholder: "Nome completo da sua mãe" },
-                        { id: "cpf", label: "CPF:", type: "text", required: true, placeholder: "000.000.000-00" },
-                        { id: "rg", label: "RG:", type: "text", required: true, placeholder: "00.000.000-0" },
-                        { id: "temCNH", label: "Tem CNH?", type: "radio", options: ["sim", "não"], required: true, placeholder: "" },
-                        { id: "email", label: "E-mail:", type: "email", required: true, placeholder: "seu@email.com" },
-                        { id: "endereco", label: "Endereço residencial completo com CEP:", type: "textarea", required: true, placeholder: "Rua, número, complemento, bairro, cidade, estado e CEP" }
+                        {
+                            id: "telefone",
+                            label: "Telefone",
+                            type: "tel",
+                            placeholder: "(00) 00000-0000",
+                            required: true
+                        },
+                        {
+                            id: "nome",
+                            label: "Nome Completo",
+                            type: "text",
+                            placeholder: "Digite seu nome completo",
+                            required: true
+                        },
+                        {
+                            id: "dataNascimento",
+                            label: "Data de Nascimento",
+                            type: "date",
+                            required: true
+                        },
+                        {
+                            id: "cpf",
+                            label: "CPF",
+                            type: "text",
+                            placeholder: "000.000.000-00",
+                            required: true
+                        },
+                        {
+                            id: "rg",
+                            label: "RG",
+                            type: "text",
+                            placeholder: "00.000.000-0",
+                            required: true
+                        },
+                        {
+                            id: "nomeMae",
+                            label: "Nome da Mãe",
+                            type: "text",
+                            placeholder: "Nome completo da sua mãe",
+                            required: true
+                        },
+                        {
+                            id: "temCNH",
+                            label: "Tem CNH?",
+                            type: "radio",
+                            options: ["sim", "nao"],
+                            required: true
+                        },
+                        {
+                            id: "email",
+                            label: "E-mail",
+                            type: "email",
+                            placeholder: "seu@email.com",
+                            required: true
+                        },
+                        {
+                            id: "endereco",
+                            label: "Endereço residencial completo com CEP",
+                            type: "textarea",
+                            placeholder: "Rua, número, complemento, bairro, cidade, estado e CEP",
+                            required: true
+                        }
                     ]
                 },
                 profissional: {
                     title: "Dados Profissionais",
-                    icon: "💼",
                     fields: [
-                        { id: "profissao", label: "Qual é a sua profissão?", type: "text", required: true, placeholder: "Digite sua profissão" },
-                        { id: "empresa", label: "Trabalhando em qual empresa?", type: "text", required: false, placeholder: "Nome da empresa" },
-                        { id: "autonomo", label: "É autônomo em qual ramo?", type: "text", required: false, placeholder: "Ramo de atividade autônoma" },
-                        { id: "renda", label: "Valor da sua renda total?", type: "number", required: true, placeholder: "R$ 0,00" }
+                        {
+                            id: "profissao",
+                            label: "Qual é a sua profissão?",
+                            type: "text",
+                            placeholder: "Digite sua profissão",
+                            required: true
+                        },
+                        {
+                            id: "empresa",
+                            label: "Trabalhando em qual empresa?",
+                            type: "text",
+                            placeholder: "Nome da empresa",
+                            required: false
+                        },
+                        {
+                            id: "autonomo",
+                            label: "É autônomo em qual ramo?",
+                            type: "text",
+                            placeholder: "Ramo de atividade autônoma",
+                            required: false
+                        },
+                        {
+                            id: "renda",
+                            label: "Valor da sua renda total?",
+                            type: "number",
+                            placeholder: "R$ 0,00",
+                            required: true
+                        }
                     ]
                 }
             }
         };
         
-        // Carregar configuração salva se existir
+        // Carregar registros salvos
+        let formSubmissions = [];
+        let leadsData = [];
+        let usingLocalStorage = false;
+        
+        // Função para mostrar mensagem de erro
+        function showErrorMessage() {
+            document.getElementById('scriptErrorMessage').style.display = 'block';
+        }
+        
+        // Carregar dados do servidor ou localStorage
+        async function loadData() {
+            try {
+                // Verificar se API do servidor está disponível
+                const isServerAvailable = await API_CONFIG.isServerStorageAvailable();
+                
+                if (isServerAvailable) {
+                    // Buscar dados do servidor
+                    const data = await API_CONFIG.request(API_CONFIG.ENDPOINTS.GET_ALL);
+                    formSubmissions = data.submissions;
+                    leadsData = data.leads;
+                    console.log('Dados carregados do servidor:', data);
+                } else {
+                    // Usar localStorage como fallback
+                    loadFromLocalStorage();
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados do servidor:', error);
+                // Usar localStorage como fallback
+                loadFromLocalStorage();
+            }
+            
+            // Iniciar carregamento dos registros
+            filteredSubmissions = [...formSubmissions];
+            filteredLeads = [...leadsData];
+            loadRegistrations(currentPage);
+            loadLeads(currentLeadPage);
+        }
+        
+        // Fallback para carregar do localStorage
+        function loadFromLocalStorage() {
+            usingLocalStorage = true;
+            showErrorMessage();
+            
+            const savedSubmissions = localStorage.getItem('formSubmissions');
+            if (savedSubmissions) {
+                try {
+                    formSubmissions = JSON.parse(savedSubmissions);
+                } catch (e) {
+                    console.error('Erro ao carregar registros salvos:', e);
+                }
+            }
+            
+            const savedLeads = localStorage.getItem('formLeads');
+            if (savedLeads) {
+                try {
+                    leadsData = JSON.parse(savedLeads);
+                } catch (e) {
+                    console.error('Erro ao carregar leads salvos:', e);
+                }
+            } else {
+                // Inicializar com os mesmos dados dos registros como fallback
+                leadsData = formSubmissions.map(submission => ({
+                    ...submission,
+                    status: 'novo',
+                    ultimaAtualizacao: submission.dataSubmissao,
+                    notas: []
+                }));
+                
+                // Salvar leads iniciais
+                localStorage.setItem('formLeads', JSON.stringify(leadsData));
+            }
+        }
+        
+        // Carregar configurações salvas do localStorage
         const savedConfig = localStorage.getItem('formConfig');
         if (savedConfig) {
             try {
-                const parsedConfig = JSON.parse(savedConfig);
-                formConfig = parsedConfig;
+                formConfig = JSON.parse(savedConfig);
             } catch (e) {
                 console.error('Erro ao carregar configurações salvas:', e);
             }
         }
         
-        // Carregar registros salvos
-        let formSubmissions = [];
-        const savedSubmissions = localStorage.getItem('formSubmissions');
-        if (savedSubmissions) {
-            try {
-                formSubmissions = JSON.parse(savedSubmissions);
-            } catch (e) {
-                console.error('Erro ao carregar registros salvos:', e);
-            }
-        }
-        
-        // Carregar leads salvos
-        let leadsData = [];
-        const savedLeads = localStorage.getItem('formLeads');
-        if (savedLeads) {
-            try {
-                leadsData = JSON.parse(savedLeads);
-            } catch (e) {
-                console.error('Erro ao carregar leads salvos:', e);
-            }
-        } else {
-            // Inicializar com os mesmos dados dos registros, mas adicionando status como "novo"
-            leadsData = formSubmissions.map(submission => ({
-                ...submission,
-                status: 'novo',
-                ultimaAtualizacao: submission.dataSubmissao,
-                notas: []
-            }));
-            
-            // Salvar leads iniciais
-            localStorage.setItem('formLeads', JSON.stringify(leadsData));
-        }
-        
-        // Paginação
+        // Variáveis de paginação
         let currentPage = 1;
         const itemsPerPage = 10;
-        let filteredSubmissions = [...formSubmissions];
+        let filteredSubmissions = [];
         
         // Variáveis de paginação para leads
         let currentLeadPage = 1;
-        let filteredLeads = [...leadsData];
+        let filteredLeads = [];
         
         // Função para formatar data
         function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('pt-BR');
+            if (!dateString) return '-';
+            
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return dateString;
+                
+                return date.toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }).replace(',', ' -');
+            } catch (e) {
+                return dateString;
+            }
         }
         
-        // Função para formatar valor monetário
+        // Formatar valores monetários
         function formatMoney(value) {
             return parseFloat(value).toLocaleString('pt-BR', {
                 style: 'currency',
                 currency: 'BRL'
             });
+        }
+        
+        // Buscar registros
+        function searchRegistrations(query) {
+            query = query.toLowerCase();
+            filteredSubmissions = formSubmissions.filter(submission => 
+                (submission.nome && submission.nome.toLowerCase().includes(query)) ||
+                (submission.cpf && submission.cpf.includes(query)) ||
+                (submission.telefone && submission.telefone.includes(query))
+            );
+            
+            currentPage = 1;
+            loadRegistrations(currentPage);
         }
         
         // Carregar registros com paginação
@@ -723,35 +881,24 @@
             
             pageData.forEach(submission => {
                 const row = document.createElement('tr');
-                
-                // Formatação de data
-                const formattedDate = formatDate(submission.dataSubmissao);
+                const submissionDate = formatDate(submission.dataSubmissao);
                 
                 row.innerHTML = `
                     <td>${submission.nome || '-'}</td>
                     <td>${submission.cpf || '-'}</td>
                     <td>${submission.telefone || '-'}</td>
-                    <td>${formattedDate}</td>
+                    <td>${submissionDate}</td>
                     <td>
                         <button class="action-btn view-btn" data-id="${submission.id}">Ver</button>
-                        <button class="action-btn delete-btn" data-id="${submission.id}">Excluir</button>
                     </td>
                 `;
                 tableBody.appendChild(row);
             });
             
-            // Adicionar eventos para os botões de visualizar e excluir
+            // Adicionar eventos para os botões de visualizar
             document.querySelectorAll('.view-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    showRegistroDetails(parseInt(this.dataset.id));
-                });
-            });
-            
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    if (confirm('Tem certeza que deseja excluir este registro?')) {
-                        deleteRegistro(parseInt(this.dataset.id));
-                    }
+                    showRegistrationDetails(parseInt(this.dataset.id));
                 });
             });
             
@@ -759,29 +906,8 @@
             updatePaginationControls();
         }
         
-        function updatePaginationControls() {
-            const totalPages = Math.ceil(filteredSubmissions.length / itemsPerPage);
-            document.getElementById('pageInfo').textContent = `Página ${currentPage} de ${totalPages || 1}`;
-            
-            document.getElementById('prevPage').disabled = currentPage <= 1;
-            document.getElementById('nextPage').disabled = currentPage >= totalPages;
-        }
-        
-        // Buscar registros
-        function searchRegistrations(query) {
-            query = query.toLowerCase();
-            filteredSubmissions = formSubmissions.filter(submission => 
-                (submission.nome && submission.nome.toLowerCase().includes(query)) ||
-                (submission.cpf && submission.cpf.includes(query)) ||
-                (submission.telefone && submission.telefone.includes(query))
-            );
-            
-            currentPage = 1;
-            loadRegistrations(currentPage);
-        }
-        
         // Exibir detalhes do registro
-        function showRegistroDetails(id) {
+        function showRegistrationDetails(id) {
             const submission = formSubmissions.find(s => s.id === id);
             if (!submission) return;
             
@@ -828,29 +954,177 @@
             
             detailsDiv.innerHTML = detailsHTML;
             
-            // Configurar botão de exclusão no modal
+            // Restaurar título do modal
+            document.querySelector('#registroModal .modal-header h2').textContent = 'Detalhes do Registro';
+            
+            // Remover botão adicional se existir
+            const existingUpdateBtn = document.getElementById('updateStatusBtn');
+            if (existingUpdateBtn) {
+                existingUpdateBtn.remove();
+            }
+            
+            // Modificar botão de exclusão
             document.getElementById('deleteRegistroBtn').dataset.id = id;
+            document.getElementById('deleteRegistroBtn').dataset.type = 'registro';
             
             // Exibir o modal
             document.getElementById('registroModal').style.display = 'flex';
         }
         
-        // Excluir registro
-        function deleteRegistro(id) {
-            formSubmissions = formSubmissions.filter(s => s.id !== id);
-            filteredSubmissions = filteredSubmissions.filter(s => s.id !== id);
-            
-            // Salvar alterações
-            localStorage.setItem('formSubmissions', JSON.stringify(formSubmissions));
-            
-            // Fechar o modal se estiver aberto
-            document.getElementById('registroModal').style.display = 'none';
-            
-            // Recarregar os registros
-            loadRegistrations(currentPage);
+        // Deletar registro
+        async function deleteRegistro(id, type = 'registro') {
+            try {
+                let success = false;
+                
+                // Tentar excluir do servidor primeiro
+                if (!usingLocalStorage) {
+                    try {
+                        await API_CONFIG.request(
+                            API_CONFIG.ENDPOINTS.DELETE_ENTRY + `&id=${id}&type=${type === 'lead' ? 'lead' : 'submission'}`,
+                            'DELETE'
+                        );
+                        success = true;
+                    } catch (error) {
+                        console.warn('Falha ao excluir do servidor:', error);
+                        // Continuará com exclusão local
+                    }
+                }
+                
+                // Se usando localStorage ou falha no servidor, excluir localmente
+                if (usingLocalStorage || !success) {
+                    if (type === 'lead') {
+                        leadsData = leadsData.filter(l => l.id !== id);
+                        filteredLeads = filteredLeads.filter(l => l.id !== id);
+                        localStorage.setItem('formLeads', JSON.stringify(leadsData));
+                    } else {
+                        formSubmissions = formSubmissions.filter(s => s.id !== id);
+                        filteredSubmissions = filteredSubmissions.filter(s => s.id !== id);
+                        localStorage.setItem('formSubmissions', JSON.stringify(formSubmissions));
+                    }
+                }
+                
+                // Recarregar a visualização
+                if (type === 'lead') {
+                    loadLeads(currentLeadPage);
+                } else {
+                    loadRegistrations(currentPage);
+                }
+                
+                // Fechar o modal
+                document.getElementById('registroModal').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Erro ao excluir registro:', error);
+                alert('Ocorreu um erro ao excluir o registro.');
+            }
         }
         
-        // Renderizar campos do formulário nas configurações
+        // Atualizar controles de paginação
+        function updatePaginationControls() {
+            const totalPages = Math.ceil(filteredSubmissions.length / itemsPerPage);
+            document.getElementById('pageInfo').textContent = `Página ${currentPage} de ${totalPages || 1}`;
+            
+            document.getElementById('prevPage').disabled = currentPage <= 1;
+            document.getElementById('nextPage').disabled = currentPage >= totalPages;
+        }
+        
+        // Exportar registro para PDF
+        function exportToPDF(id) {
+            alert('Funcionalidade de exportação para PDF será implementada em uma versão futura.');
+        }
+        
+        // Buscar leads
+        function searchLeads(query) {
+            query = query.toLowerCase();
+            filteredLeads = leadsData.filter(lead => 
+                (lead.nome && lead.nome.toLowerCase().includes(query)) ||
+                (lead.cpf && lead.cpf.includes(query)) ||
+                (lead.telefone && lead.telefone.includes(query))
+            );
+            
+            currentLeadPage = 1;
+            loadLeads(currentLeadPage);
+        }
+        
+        // Filtrar leads por status
+        function filterLeadsByStatus(status) {
+            if (status === 'all') {
+                filteredLeads = [...leadsData];
+            } else {
+                filteredLeads = leadsData.filter(lead => lead.status === status);
+            }
+            
+            currentLeadPage = 1;
+            loadLeads(currentLeadPage);
+        }
+        
+        // Atualizar status do lead
+        async function updateLeadStatus(id, newStatus, note) {
+            try {
+                const currentDate = new Date().toISOString();
+                let success = false;
+                
+                // Tentar atualizar no servidor primeiro
+                if (!usingLocalStorage) {
+                    try {
+                        await API_CONFIG.request(
+                            API_CONFIG.ENDPOINTS.UPDATE_LEAD,
+                            'PUT',
+                            { id, status: newStatus, note }
+                        );
+                        success = true;
+                    } catch (error) {
+                        console.warn('Falha ao atualizar no servidor:', error);
+                        // Continuará com atualização local
+                    }
+                }
+                
+                // Se usando localStorage ou falha no servidor, atualizar localmente
+                if (usingLocalStorage || !success) {
+                    const leadIndex = leadsData.findIndex(l => l.id === id);
+                    if (leadIndex === -1) return;
+                    
+                    // Atualizar o lead
+                    leadsData[leadIndex].status = newStatus;
+                    leadsData[leadIndex].ultimaAtualizacao = currentDate;
+                    
+                    // Adicionar nota se fornecida
+                    if (note.trim()) {
+                        if (!leadsData[leadIndex].notas) {
+                            leadsData[leadIndex].notas = [];
+                        }
+                        
+                        leadsData[leadIndex].notas.push({
+                            data: currentDate,
+                            status: newStatus,
+                            texto: note
+                        });
+                    }
+                    
+                    // Salvar alterações no localStorage
+                    localStorage.setItem('formLeads', JSON.stringify(leadsData));
+                }
+                
+                // Recarregar lista de leads
+                loadLeads(currentLeadPage);
+                
+            } catch (error) {
+                console.error('Erro ao atualizar status do lead:', error);
+                alert('Ocorreu um erro ao atualizar o status do lead.');
+            }
+        }
+        
+        // Salvar configuração do formulário
+        function saveFormConfig() {
+            formConfig.title = document.getElementById('formTitle').value;
+            formConfig.submitButtonText = document.getElementById('submitButtonText').value;
+            formConfig.successMessage = document.getElementById('successMessage').value;
+            
+            localStorage.setItem('formConfig', JSON.stringify(formConfig));
+            alert('Configurações salvas com sucesso!');
+        }
+        
+        // Renderizar campos do formulário
         function renderFormFields() {
             // Campos de dados pessoais
             const pessoalFieldsDiv = document.getElementById('pessoalFields');
@@ -946,7 +1220,7 @@
             return typeNames[type] || type;
         }
         
-        // Adicionar novo campo
+        // Adicionar campo ao formulário
         function addField(section) {
             // Limpar o modal
             document.getElementById('fieldLabel').value = '';
@@ -967,7 +1241,7 @@
             document.getElementById('fieldModal').style.display = 'flex';
         }
         
-        // Editar campo existente
+        // Editar campo do formulário
         function editField(section, index) {
             const field = formConfig.sections[section].fields[index];
             
@@ -997,502 +1271,51 @@
             document.getElementById('fieldModal').style.display = 'flex';
         }
         
-        // Salvar campo (adicionar ou editar)
-        function saveField() {
-            const mode = document.getElementById('saveFieldBtn').dataset.mode;
-            const section = document.getElementById('saveFieldBtn').dataset.section;
-            
-            const fieldData = {
-                label: document.getElementById('fieldLabel').value,
-                type: document.getElementById('fieldType').value,
-                required: document.getElementById('fieldRequired').checked,
-                placeholder: document.getElementById('fieldPlaceholder').value
-            };
-            
-            if (!fieldData.label) {
-                alert('O rótulo do campo é obrigatório.');
-                return;
-            }
-            
-            // Gerar ID com base no rótulo
-            if (mode === 'add') {
-                fieldData.id = fieldData.label
-                    .toLowerCase()
-                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remover acentos
-                    .replace(/[^a-z0-9]/g, '') // remover caracteres especiais
-                    .replace(/\s+/g, ''); // remover espaços
-            } else {
-                const index = parseInt(document.getElementById('saveFieldBtn').dataset.index);
-                fieldData.id = formConfig.sections[section].fields[index].id;
-            }
-            
-            // Adicionar opções se o tipo for radio ou checkbox
-            if (fieldData.type === 'radio' || fieldData.type === 'checkbox') {
-                const options = document.getElementById('fieldOptions').value
-                    .split('\n')
-                    .map(opt => opt.trim())
-                    .filter(opt => opt);
-                
-                if (options.length === 0) {
-                    alert('Você precisa adicionar pelo menos uma opção para este tipo de campo.');
-                    return;
-                }
-                
-                fieldData.options = options;
-            }
-            
-            if (mode === 'add') {
-                // Adicionar novo campo
-                formConfig.sections[section].fields.push(fieldData);
-            } else {
-                // Atualizar campo existente
-                const index = parseInt(document.getElementById('saveFieldBtn').dataset.index);
-                formConfig.sections[section].fields[index] = fieldData;
-            }
-            
-            // Fechar o modal
-            document.getElementById('fieldModal').style.display = 'none';
-            
-            // Atualizar a visualização
-            renderFormFields();
-            
-            // Salvar configuração
-            saveConfiguration();
-        }
-        
-        // Excluir campo
+        // Excluir campo do formulário
         function deleteField(section, index) {
             formConfig.sections[section].fields.splice(index, 1);
             renderFormFields();
-            saveConfiguration();
-        }
-        
-        // Salvar todas as configurações
-        function saveConfiguration() {
-            formConfig.title = document.getElementById('formTitle').value;
-            formConfig.submitButtonText = document.getElementById('submitButtonText').value;
-            formConfig.successMessage = document.getElementById('successMessage').value;
-            
-            localStorage.setItem('formConfig', JSON.stringify(formConfig));
-            
-            // Feedback visual
-            const saveBtn = document.getElementById('saveConfigBtn');
-            const originalText = saveBtn.textContent;
-            saveBtn.textContent = 'Configurações Salvas!';
-            saveBtn.disabled = true;
-            
-            setTimeout(() => {
-                saveBtn.textContent = originalText;
-                saveBtn.disabled = false;
-            }, 2000);
-        }
-        
-        // Exportar registro para PDF (simulado)
-        function exportRegistroPDF(id) {
-            alert('Funcionalidade de exportação para PDF será implementada em uma versão futura.');
-        }
-        
-        // Buscar leads
-        function searchLeads(query) {
-            query = query.toLowerCase();
-            filteredLeads = leadsData.filter(lead => 
-                (lead.nome && lead.nome.toLowerCase().includes(query)) ||
-                (lead.cpf && lead.cpf.includes(query)) ||
-                (lead.telefone && lead.telefone.includes(query))
-            );
-            
-            currentLeadPage = 1;
-            loadLeads(currentLeadPage);
-        }
-        
-        // Filtrar leads por status
-        function filterLeadsByStatus(status) {
-            if (status === 'all') {
-                filteredLeads = [...leadsData];
-            } else {
-                filteredLeads = leadsData.filter(lead => lead.status === status);
-            }
-            
-            currentLeadPage = 1;
-            loadLeads(currentLeadPage);
-        }
-        
-        // Carregar leads com paginação
-        function loadLeads(page) {
-            const startIndex = (page - 1) * itemsPerPage;
-            const endIndex = startIndex + itemsPerPage;
-            const pageData = filteredLeads.slice(startIndex, endIndex);
-            
-            const tableBody = document.getElementById('leadsTable');
-            tableBody.innerHTML = '';
-            
-            if (pageData.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhum lead encontrado</td></tr>';
-                return;
-            }
-            
-            // Mapeamento de status para cores
-            const statusColors = {
-                'novo': '#28a745',
-                'contato': '#0d6efd',
-                'aguardando': '#ffc107',
-                'convertido': '#20c997',
-                'perdido': '#dc3545'
-            };
-            
-            // Mapeamento de status para textos
-            const statusLabels = {
-                'novo': 'Novo',
-                'contato': 'Em Contato',
-                'aguardando': 'Aguardando',
-                'convertido': 'Convertido',
-                'perdido': 'Perdido'
-            };
-            
-            pageData.forEach(lead => {
-                const row = document.createElement('tr');
-                
-                // Formatação de datas
-                const submissionDate = formatDate(lead.dataSubmissao);
-                const updateDate = formatDate(lead.ultimaAtualizacao);
-                
-                // Status com cor
-                const statusColor = statusColors[lead.status] || '#6c757d';
-                const statusLabel = statusLabels[lead.status] || 'Indefinido';
-                
-                row.innerHTML = `
-                    <td>${lead.nome || '-'}</td>
-                    <td>${lead.telefone || '-'}</td>
-                    <td>${submissionDate}</td>
-                    <td><span style="display: inline-block; padding: 5px 10px; border-radius: 4px; background-color: ${statusColor}; color: white;">${statusLabel}</span></td>
-                    <td>${updateDate}</td>
-                    <td>
-                        <button class="action-btn view-lead-btn" data-id="${lead.id}">Ver</button>
-                        <button class="action-btn edit-status-btn" data-id="${lead.id}">Atualizar</button>
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            });
-            
-            // Adicionar eventos para os botões de visualizar e atualizar status
-            document.querySelectorAll('.view-lead-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    showLeadDetails(parseInt(this.dataset.id));
-                });
-            });
-            
-            document.querySelectorAll('.edit-status-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    showStatusModal(parseInt(this.dataset.id));
-                });
-            });
-            
-            // Atualizar controles de paginação
-            updateLeadPaginationControls();
-        }
-        
-        function updateLeadPaginationControls() {
-            const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
-            document.getElementById('leadPageInfo').textContent = `Página ${currentLeadPage} de ${totalPages || 1}`;
-            
-            document.getElementById('prevLeadPage').disabled = currentLeadPage <= 1;
-            document.getElementById('nextLeadPage').disabled = currentLeadPage >= totalPages;
-        }
-        
-        // Exibir detalhes do lead
-        function showLeadDetails(id) {
-            const lead = leadsData.find(l => l.id === id);
-            if (!lead) return;
-            
-            const detailsDiv = document.getElementById('registroDetails');
-            detailsDiv.innerHTML = '';
-            
-            // Status do lead
-            const statusLabels = {
-                'novo': 'Novo',
-                'contato': 'Em Contato',
-                'aguardando': 'Aguardando Resposta',
-                'convertido': 'Convertido',
-                'perdido': 'Perdido'
-            };
-            
-            let detailsHTML = `
-                <div class="detail-item" style="background-color: #f7f7f7; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                    <div class="detail-label">Status do Lead:</div>
-                    <div class="detail-value">${statusLabels[lead.status] || 'Indefinido'}</div>
-                </div>
-            `;
-            
-            // Dados pessoais
-            detailsHTML += '<h3>Dados Pessoais</h3>';
-            
-            formConfig.sections.pessoal.fields.forEach(field => {
-                let value = lead[field.id] || '-';
-                
-                // Formatação especial para tipos específicos
-                if (field.type === 'date' && value !== '-') {
-                    value = formatDate(value);
-                }
-                
-                detailsHTML += `
-                    <div class="detail-item">
-                        <div class="detail-label">${field.label}</div>
-                        <div class="detail-value">${value}</div>
-                    </div>
-                `;
-            });
-            
-            // Dados profissionais
-            detailsHTML += '<h3>Dados Profissionais</h3>';
-            
-            formConfig.sections.profissional.fields.forEach(field => {
-                let value = lead[field.id] || '-';
-                
-                // Formatação especial para valores monetários
-                if (field.id === 'renda' && value !== '-') {
-                    value = formatMoney(value);
-                }
-                
-                detailsHTML += `
-                    <div class="detail-item">
-                        <div class="detail-label">${field.label}</div>
-                        <div class="detail-value">${value}</div>
-                    </div>
-                `;
-            });
-            
-            // Histórico de notas
-            detailsHTML += '<h3>Histórico de Contatos</h3>';
-            
-            if (lead.notas && lead.notas.length > 0) {
-                lead.notas.forEach(nota => {
-                    detailsHTML += `
-                        <div class="detail-item" style="background-color: #f7f7f7; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
-                            <div class="detail-label">${formatDate(nota.data)} - ${nota.status}</div>
-                            <div class="detail-value">${nota.texto}</div>
-                        </div>
-                    `;
-                });
-            } else {
-                detailsHTML += '<p style="font-style: italic; color: #777;">Nenhuma nota adicionada</p>';
-            }
-            
-            detailsDiv.innerHTML = detailsHTML;
-            
-            // Modificar título do modal
-            document.querySelector('#registroModal .modal-header h2').textContent = 'Detalhes do Lead';
-            
-            // Adicionar botão de atualização de status
-            const modalFooter = document.querySelector('#registroModal .modal-footer');
-            
-            // Remover botão adicional se já existir
-            const existingUpdateBtn = document.getElementById('updateStatusBtn');
-            if (existingUpdateBtn) {
-                existingUpdateBtn.remove();
-            }
-            
-            // Adicionar botão de atualização
-            const updateBtn = document.createElement('button');
-            updateBtn.className = 'action-btn';
-            updateBtn.id = 'updateStatusBtn';
-            updateBtn.textContent = 'Atualizar Status';
-            updateBtn.dataset.id = id;
-            updateBtn.addEventListener('click', function() {
-                document.getElementById('registroModal').style.display = 'none';
-                showStatusModal(parseInt(this.dataset.id));
-            });
-            
-            modalFooter.insertBefore(updateBtn, modalFooter.firstChild);
-            
-            // Modificar botão de exclusão
-            document.getElementById('deleteRegistroBtn').dataset.id = id;
-            document.getElementById('deleteRegistroBtn').dataset.type = 'lead';
-            
-            // Exibir o modal
-            document.getElementById('registroModal').style.display = 'flex';
-        }
-        
-        // Modal para atualização de status
-        function showStatusModal(id) {
-            const lead = leadsData.find(l => l.id === id);
-            if (!lead) return;
-            
-            // Criar modal de status se não existir
-            if (!document.getElementById('statusModal')) {
-                const statusModal = document.createElement('div');
-                statusModal.id = 'statusModal';
-                statusModal.className = 'modal';
-                
-                statusModal.innerHTML = `
-                    <div class="modal-content" style="max-width: 600px;">
-                        <div class="modal-header">
-                            <h2>Atualizar Status do Lead</h2>
-                            <button class="close-btn" id="closeStatusModal">&times;</button>
-                        </div>
-                        <div class="form-group">
-                            <label for="leadStatusSelect">Status:</label>
-                            <select id="leadStatusSelect">
-                                <option value="novo">Novo</option>
-                                <option value="contato">Em Contato</option>
-                                <option value="aguardando">Aguardando Resposta</option>
-                                <option value="convertido">Convertido</option>
-                                <option value="perdido">Perdido</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="leadNote">Nota/Observação:</label>
-                            <textarea id="leadNote" rows="4" placeholder="Adicione informações sobre o contato ou mudança de status..."></textarea>
-                        </div>
-                        <button class="save-btn" id="saveStatusBtn">Salvar Atualização</button>
-                    </div>
-                `;
-                
-                document.body.appendChild(statusModal);
-                
-                // Adicionar evento para fechar o modal
-                document.getElementById('closeStatusModal').addEventListener('click', function() {
-                    document.getElementById('statusModal').style.display = 'none';
-                });
-                
-                // Adicionar evento para salvar o status
-                document.getElementById('saveStatusBtn').addEventListener('click', function() {
-                    const leadId = parseInt(this.dataset.id);
-                    const newStatus = document.getElementById('leadStatusSelect').value;
-                    const note = document.getElementById('leadNote').value;
-                    
-                    updateLeadStatus(leadId, newStatus, note);
-                    document.getElementById('statusModal').style.display = 'none';
-                });
-            }
-            
-            // Configurar o modal com os dados atuais
-            document.getElementById('leadStatusSelect').value = lead.status;
-            document.getElementById('leadNote').value = '';
-            document.getElementById('saveStatusBtn').dataset.id = id;
-            
-            // Exibir o modal
-            document.getElementById('statusModal').style.display = 'flex';
-        }
-        
-        // Atualizar status do lead
-        function updateLeadStatus(id, newStatus, note) {
-            const leadIndex = leadsData.findIndex(l => l.id === id);
-            if (leadIndex === -1) return;
-            
-            const currentDate = new Date().toISOString();
-            
-            // Atualizar o lead
-            leadsData[leadIndex].status = newStatus;
-            leadsData[leadIndex].ultimaAtualizacao = currentDate;
-            
-            // Adicionar nota se fornecida
-            if (note.trim()) {
-                if (!leadsData[leadIndex].notas) {
-                    leadsData[leadIndex].notas = [];
-                }
-                
-                leadsData[leadIndex].notas.push({
-                    data: currentDate,
-                    status: newStatus,
-                    texto: note
-                });
-            }
-            
-            // Salvar alterações
-            localStorage.setItem('formLeads', JSON.stringify(leadsData));
-            
-            // Recarregar lista de leads
-            loadLeads(currentLeadPage);
-        }
-        
-        // Modificar a função deleteRegistro para lidar com leads também
-        function deleteRegistro(id, type = 'registro') {
-            if (type === 'lead') {
-                leadsData = leadsData.filter(l => l.id !== id);
-                filteredLeads = filteredLeads.filter(l => l.id !== id);
-                localStorage.setItem('formLeads', JSON.stringify(leadsData));
-                loadLeads(currentLeadPage);
-            } else {
-                formSubmissions = formSubmissions.filter(s => s.id !== id);
-                filteredSubmissions = filteredSubmissions.filter(s => s.id !== id);
-                localStorage.setItem('formSubmissions', JSON.stringify(formSubmissions));
-                loadRegistrations(currentPage);
-            }
-            
-            // Fechar o modal
-            document.getElementById('registroModal').style.display = 'none';
+            saveFormConfig();
         }
         
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
-            // Configurar campos de formulário com valores salvos
-            document.getElementById('formTitle').value = formConfig.title;
-            document.getElementById('submitButtonText').value = formConfig.submitButtonText;
-            document.getElementById('successMessage').value = formConfig.successMessage;
+            // Verificar permissão de admin antes de carregar dados
+            if (!checkAdminAccess()) {
+                window.location.href = 'login.html';
+                return;
+            }
             
-            // Carregar registros
-            loadRegistrations(currentPage);
+            // Carregar dados
+            loadData();
             
-            // Renderizar campos do formulário
-            renderFormFields();
-            
-            // Adicionar eventos para troca de abas
+            // Tabs
             document.querySelectorAll('.tab-btn').forEach(button => {
                 button.addEventListener('click', function() {
-                    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                    // Ocultar todos os conteúdos de abas
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
                     
-                    button.classList.add('active');
-                    document.getElementById(button.dataset.tab).classList.add('active');
+                    // Remover classe active de todos os botões
+                    document.querySelectorAll('.tab-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    
+                    // Ativar aba clicada
+                    const tabId = this.dataset.tab;
+                    document.getElementById(tabId).classList.add('active');
+                    this.classList.add('active');
                 });
             });
             
-            // Adicionar eventos para os botões de adicionar campo
-            document.querySelectorAll('.add-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    addField(this.dataset.section);
-                });
-            });
-            
-            // Evento para salvar campo
-            document.getElementById('saveFieldBtn').addEventListener('click', saveField);
-            
-            // Eventos para controle do tipo de campo
-            document.getElementById('fieldType').addEventListener('change', function() {
-                if (this.value === 'radio' || this.value === 'checkbox') {
-                    document.getElementById('optionsGroup').style.display = 'block';
-                } else {
-                    document.getElementById('optionsGroup').style.display = 'none';
-                }
-            });
-            
-            // Eventos para os modais
-            document.getElementById('closeRegistroModal').addEventListener('click', function() {
-                document.getElementById('registroModal').style.display = 'none';
-            });
-            
-            document.getElementById('closeFieldModal').addEventListener('click', function() {
-                document.getElementById('fieldModal').style.display = 'none';
-            });
-            
-            // Evento para excluir registro do modal
-            document.getElementById('deleteRegistroBtn').addEventListener('click', function() {
-                if (confirm('Tem certeza que deseja excluir este registro?')) {
-                    deleteRegistro(parseInt(this.dataset.id));
-                }
-            });
-            
-            // Evento para exportar registro para PDF
-            document.getElementById('exportRegistroBtn').addEventListener('click', function() {
-                exportRegistroPDF(parseInt(this.dataset.id));
-            });
-            
-            // Evento para pesquisa
+            // Botão de busca
             document.getElementById('searchBtn').addEventListener('click', function() {
                 const query = document.getElementById('searchRegistros').value;
                 searchRegistrations(query);
             });
             
+            // Busca por pressionar Enter
             document.getElementById('searchRegistros').addEventListener('keyup', function(e) {
                 if (e.key === 'Enter') {
                     const query = this.value;
@@ -1500,7 +1323,7 @@
                 }
             });
             
-            // Eventos para paginação
+            // Paginação
             document.getElementById('prevPage').addEventListener('click', function() {
                 if (currentPage > 1) {
                     currentPage--;
@@ -1516,34 +1339,38 @@
                 }
             });
             
-            // Evento para salvar configurações
-            document.getElementById('saveConfigBtn').addEventListener('click', saveConfiguration);
+            // Renderizar campos do formulário
+            renderFormFields();
             
-            // Evento para logout
-            document.getElementById('logoutBtn').addEventListener('click', function() {
-                sessionStorage.removeItem('adminAccess');
-                window.location.href = 'login.html';
+            // Evento para adicionar campo à seção pessoal
+            document.getElementById('addFieldPessoal').addEventListener('click', function() {
+                addField('pessoal');
             });
             
-            // Eventos para seções colapsáveis
-            document.querySelectorAll('.collapsible').forEach((header, index) => {
-                const content = document.querySelectorAll('.section-content')[index];
-                
-                // Abrir primeira seção por padrão
-                if (index === 0) {
-                    header.classList.add('active');
-                    content.style.display = 'block';
-                }
-                
-                header.addEventListener('click', function() {
-                    this.classList.toggle('active');
-                    
-                    if (content.style.display === 'block') {
-                        content.style.display = 'none';
-                    } else {
-                        content.style.display = 'block';
-                    }
+            // Evento para adicionar campo à seção profissional
+            document.getElementById('addFieldProfissional').addEventListener('click', function() {
+                addField('profissional');
+            });
+            
+            // Evento para salvar configurações
+            document.getElementById('saveConfigBtn').addEventListener('click', saveFormConfig);
+            
+            // Evento para fechar modal
+            document.querySelectorAll('.close-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const modalId = this.closest('.modal').id;
+                    document.getElementById(modalId).style.display = 'none';
                 });
+            });
+            
+            // Evento para excluir registro
+            document.getElementById('deleteRegistroBtn').addEventListener('click', function() {
+                const id = parseInt(this.dataset.id);
+                const type = this.dataset.type || 'registro';
+                
+                if (confirm('Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.')) {
+                    deleteRegistro(id, type);
+                }
             });
             
             // Carregar leads
