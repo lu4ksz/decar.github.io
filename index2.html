@@ -613,12 +613,15 @@
         form.addEventListener('submit', async function(event) {
             event.preventDefault();
             
+            console.log("Formulário enviado - iniciando processamento");
+            
             // Validate form
             let isValid = true;
             requiredFields.forEach(field => {
                 if (field.value.trim() === '') {
                     field.style.borderColor = '#e74c3c';
                     isValid = false;
+                    console.log("Campo obrigatório não preenchido:", field.id);
                 } else {
                     field.style.borderColor = '';
                 }
@@ -636,11 +639,14 @@
             if (!cnhSelected) {
                 document.querySelector('.radio-group').style.borderColor = '#e74c3c';
                 isValid = false;
+                console.log("Opção de CNH não selecionada");
             } else {
                 document.querySelector('.radio-group').style.borderColor = '';
             }
             
             if (isValid) {
+                console.log("Formulário válido - preparando para salvar");
+                
                 // Show loading indicator in submit button
                 const submitBtn = document.getElementById('submitBtn');
                 const originalBtnText = submitBtn.textContent;
@@ -663,7 +669,7 @@
                     const formData = new FormData(form);
                     const submission = {
                         id: Date.now(),
-                        dataSubmissao: new Date().toISOString().split('T')[0]
+                        dataSubmissao: new Date().toISOString()
                     };
                     
                     // Convert FormData to object
@@ -673,6 +679,8 @@
                         }
                     }
                     
+                    console.log("Objeto de submissão criado:", submission.id);
+                    
                     // Create lead entry with default status
                     const leadEntry = {
                         ...submission,
@@ -681,20 +689,24 @@
                         notas: []
                     };
                     
+                    console.log("Tentando salvar no arquivo central...");
+                    
                     // Try to save to central file first
                     let savedToCentralFile = false;
                     
                     try {
                         // Save to central file
                         savedToCentralFile = await DATA_SYNC.saveSubmission(submission, leadEntry);
-                        console.log('Data saved to central file:', savedToCentralFile ? 'success' : 'failed');
+                        console.log('Resultado do salvamento no arquivo central:', savedToCentralFile ? 'Sucesso' : 'Falha');
                     } catch (error) {
-                        console.warn('Failed to save to central file:', error);
+                        console.warn('Falha ao salvar no arquivo central:', error);
                         // Continue to save locally as fallback
                     }
                     
                     // If central file save failed, save to localStorage as fallback
                     if (!savedToCentralFile) {
+                        console.log("Salvamento no arquivo central falhou - usando localStorage como fallback");
+                        
                         // Save submission to localStorage
                         const submissions = JSON.parse(localStorage.getItem('formSubmissions') || '[]');
                         submissions.push(submission);
@@ -705,17 +717,16 @@
                         leads.push(leadEntry);
                         localStorage.setItem('formLeads', JSON.stringify(leads));
                         
-                        console.log('Data saved to localStorage as fallback');
+                        console.log('Dados salvos no localStorage como alternativa');
                     }
                     
                     // Debug to console to verify
-                    console.log('Form submission saved:', submission);
-                    console.log('Lead saved:', leadEntry);
+                    console.log('Salvamento concluído. Redirecionando para página de sucesso...');
                     
                     // Redirect to success page
                     window.location.href = 'success.html';
                 } catch (error) {
-                    console.error('Error saving form data:', error);
+                    console.error('Erro ao salvar dados do formulário:', error);
                     alert('Ocorreu um erro ao enviar o formulário. Por favor, tente novamente.');
                     
                     // Reset button
@@ -723,6 +734,7 @@
                     submitBtn.disabled = false;
                 }
             } else {
+                console.log("Formulário inválido - exibindo mensagem de erro");
                 alert('Por favor, preencha todos os campos obrigatórios.');
             }
         });
